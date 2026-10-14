@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.2.1";
+const CARD_VERSION = "1.2.2";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -99,7 +99,7 @@ const STYLE = `
   }
   .txt { min-width: 0; }
   .title {
-    font-size: clamp(19px, 7.6cqw, 28px); font-weight: 500; line-height: 1.2;
+    font-size: clamp(22px, 9cqw, 33px); font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .status { font-size: clamp(12px, 4cqw, 16px); font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
@@ -136,11 +136,11 @@ const STYLE = `
     display: flex; align-items: center; gap: 3cqw; min-width: 0; white-space: nowrap;
     color: var(--htc-accent); transition: color .3s;
   }
-  .current .thermo { color: var(--htc-muted); --mdc-icon-size: clamp(30px, 10.5cqw, 46px); flex: 0 0 auto; }
+  .current .thermo { color: var(--htc-muted); --mdc-icon-size: clamp(35px, 12.2cqw, 53px); flex: 0 0 auto; }
   .current .num { font-size: 17.5cqw; font-weight: 400; line-height: 1; letter-spacing: -0.02em; }
-  .current .unit { align-self: flex-start; margin-top: 1.2cqw; font-size: 5.9cqw; font-weight: 400; line-height: 1; }
+  .current .unit { align-self: flex-start; margin-top: 1.2cqw; font-size: 7.7cqw; font-weight: 400; line-height: 1; }
   .main.dual .current .num { font-size: 12cqw; }
-  .main.dual .current .unit { font-size: 4.4cqw; margin-top: 0.8cqw; }
+  .main.dual .current .unit { font-size: 5.7cqw; margin-top: 0.8cqw; }
 
   .targets { display: flex; align-items: stretch; gap: 2cqw; }
   .target { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 24cqw; }
