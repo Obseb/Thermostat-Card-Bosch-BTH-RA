@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.2.0";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -42,9 +42,7 @@ const MODE_TILE_BG = {
 
 const I18N = {
   en: {
-    current: "Current Temp",
     mode: "Mode",
-    presets: "Presets",
     heat: "HEAT",
     cool: "COOL",
     power: "Heating on / off",
@@ -53,9 +51,7 @@ const I18N = {
     actions: { heating: "Heating", cooling: "Cooling", idle: "Idle", off: "Off", drying: "Drying", fan: "Fan", defrosting: "Defrosting" },
   },
   fr: {
-    current: "Température actuelle",
     mode: "Mode",
-    presets: "Préréglages",
     heat: "CHAUD",
     cool: "FROID",
     power: "Chauffage marche / arrêt",
@@ -78,7 +74,7 @@ const STYLE = `
   :host { display: block; }
   ha-card {
     container-type: inline-size;
-    padding: 20px;
+    padding: 24px 22px;
     background: var(--htc-card-bg, var(--ha-card-background, var(--card-background-color, #1c1c1c)));
     color: var(--primary-text-color, #fff);
     border-radius: var(--ha-card-border-radius, 24px);
@@ -106,7 +102,7 @@ const STYLE = `
     font-size: clamp(16px, 6.4cqw, 24px); font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .subtitle, .status { font-size: clamp(12px, 4cqw, 16px); font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
+  .status { font-size: clamp(12px, 4cqw, 16px); font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
 
   .right { display: flex; align-items: center; gap: 2cqw; flex: 0 0 auto; }
   .gear {
@@ -135,7 +131,7 @@ const STYLE = `
   .switch:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
 
   /* --- Corps : température actuelle | consigne ------------------------ */
-  .main { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3cqw; margin-top: 5cqw; }
+  .main { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3cqw; margin-top: 7cqw; }
   .current {
     display: flex; align-items: center; gap: 3cqw; min-width: 0; white-space: nowrap;
     color: var(--htc-accent); transition: color .3s;
@@ -147,14 +143,14 @@ const STYLE = `
   .main.dual .current .unit { font-size: 4.4cqw; margin-top: 0.8cqw; }
 
   .targets { display: flex; align-items: stretch; gap: 2cqw; }
-  .target { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 20cqw; }
+  .target { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 24cqw; }
   .target .label { font-size: 3.2cqw; font-weight: 500; letter-spacing: 0.03em; color: var(--htc-accent); }
   .arrow {
-    box-sizing: border-box; width: 17cqw; height: 15cqw; max-width: 68px; max-height: 60px; min-width: 46px; min-height: 42px;
+    box-sizing: border-box; width: 20cqw; height: 18cqw; max-width: 84px; max-height: 72px; min-width: 52px; min-height: 48px;
     padding: 0; border: none; border-radius: 14px; background: none;
     color: var(--primary-text-color); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    --mdc-icon-size: clamp(32px, 12cqw, 46px);
+    --mdc-icon-size: clamp(40px, 15cqw, 60px);
     transition: background .15s, transform .1s;
   }
   .arrow:hover { background: var(--htc-tile); }
@@ -162,13 +158,14 @@ const STYLE = `
   .arrow:disabled { opacity: .35; cursor: default; background: none; transform: none; }
   .target .val {
     display: flex; align-items: flex-start; gap: 2px; padding: 1.5cqw 0;
-    font-size: clamp(18px, 7.8cqw, 28px); font-weight: 500; line-height: 1.2; white-space: nowrap;
+    font-size: clamp(22px, 9.5cqw, 34px); font-weight: 500; line-height: 1.2; white-space: nowrap;
   }
   .target .val small { font-size: 0.62em; font-weight: 400; color: var(--htc-muted); margin-top: 0.05em; }
-  .targets.dual .val { font-size: clamp(14px, 5.4cqw, 20px); }
-  .targets.dual .arrow { width: 12.5cqw; min-width: 38px; }
+  .targets.dual .target { min-width: 16cqw; }
+  .targets.dual .val { font-size: clamp(15px, 6cqw, 22px); }
+  .targets.dual .arrow { width: 14cqw; min-width: 40px; }
 
-  /* --- Modes et préréglages (optionnels, comme la carte d'origine) ----- */
+  /* --- Boutons de mode (optionnels, comme la carte d'origine) ---------- */
   .section-title { font-size: 4.2cqw; font-weight: 500; color: var(--htc-muted); margin: 20px 0 10px; }
   .modes-block { margin-top: 14px; }
   .modes-block .section-title { margin-top: 0; }
@@ -183,20 +180,6 @@ const STYLE = `
   .mode:hover { filter: brightness(1.25); }
   .mode.active { color: var(--c); background: var(--bg); }
 
-  .presets-block { margin-top: 14px; }
-  .presets-block .section-title { margin-top: 0; }
-  .preset-wrap { position: relative; }
-  select.preset {
-    width: 100%; box-sizing: border-box; appearance: none; -webkit-appearance: none;
-    border: none; border-radius: 18px; background: var(--htc-tile);
-    color: var(--primary-text-color); font-size: 5cqw; font-weight: 500; font-family: inherit;
-    padding: 0 60px 0 20px; height: 13cqw; min-height: 50px; max-height: 68px; cursor: pointer;
-  }
-  select.preset:focus { outline: 2px solid var(--htc-accent); }
-  .preset-wrap::after {
-    content: ""; position: absolute; right: 24px; top: 50%; margin-top: -4px; pointer-events: none;
-    border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 11px solid var(--htc-muted);
-  }
   .error { padding: 16px; color: var(--error-color, #db4437); }
   [hidden] { display: none !important; }
 `;
@@ -222,11 +205,9 @@ class ThermostatCardBoschBthRa extends HTMLElement {
   setConfig(config) {
     if (!config || !config.entity) throw new Error("Veuillez définir une entité `entity` (climate.xxx).");
     this._config = {
-      show_subtitle: false,
       show_status: false,
       show_modes: false,
       show_mode_title: false,
-      show_presets: false,
       show_settings: false,
       ...config,
     };
@@ -241,12 +222,12 @@ class ThermostatCardBoschBthRa extends HTMLElement {
 
   getCardSize() {
     const c = this._config || {};
-    return 3 + (c.show_modes ? 1 : 0) + (c.show_presets ? 1 : 0);
+    return 4 + (c.show_modes ? 1 : 0);
   }
 
   getGridOptions() {
     const c = this._config || {};
-    const rows = 4 + (c.show_modes ? 1 : 0) + (c.show_presets ? 1 : 0);
+    const rows = 4 + (c.show_modes ? 1 : 0);
     return { columns: 6, rows, min_columns: 4, min_rows: 3 };
   }
 
@@ -266,7 +247,6 @@ class ThermostatCardBoschBthRa extends HTMLElement {
               <div class="badge"><ha-icon icon="mdi:fire"></ha-icon></div>
               <div class="txt">
                 <div class="title"></div>
-                <div class="subtitle"></div>
                 <div class="status"></div>
               </div>
             </div>
@@ -286,10 +266,6 @@ class ThermostatCardBoschBthRa extends HTMLElement {
             <div class="section-title mode-title"></div>
             <div class="modes"></div>
           </div>
-          <div class="presets-block">
-            <div class="section-title preset-title"></div>
-            <div class="preset-wrap"><select class="preset"></select></div>
-          </div>
         </div>
       </ha-card>`;
     const r = this.shadowRoot;
@@ -299,7 +275,6 @@ class ThermostatCardBoschBthRa extends HTMLElement {
       card: r.querySelector("ha-card"),
       badgeIcon: r.querySelector(".badge ha-icon"),
       title: r.querySelector(".title"),
-      subtitle: r.querySelector(".subtitle"),
       status: r.querySelector(".status"),
       gear: r.querySelector(".gear"),
       sw: r.querySelector(".switch"),
@@ -310,17 +285,8 @@ class ThermostatCardBoschBthRa extends HTMLElement {
       modesBlock: r.querySelector(".modes-block"),
       modeTitle: r.querySelector(".mode-title"),
       modes: r.querySelector(".modes"),
-      presetsBlock: r.querySelector(".presets-block"),
-      presetTitle: r.querySelector(".preset-title"),
-      preset: r.querySelector("select.preset"),
     };
     r.addEventListener("click", (e) => this._onClick(e));
-    this._els.preset.addEventListener("change", (e) => {
-      this._hass.callService("climate", "set_preset_mode", {
-        entity_id: this._config.entity,
-        preset_mode: e.target.value,
-      });
-    });
     this._cache = {};
     this._built = true;
   }
@@ -474,8 +440,6 @@ class ThermostatCardBoschBthRa extends HTMLElement {
 
     // En-tête
     this._setText(E.title, "title", this._config.name || a.friendly_name || this._config.entity);
-    E.subtitle.hidden = !this._config.show_subtitle;
-    this._setText(E.subtitle, "subtitle", t.current);
     const status = this._config.show_status ? this._actionLabel(s) : "";
     E.status.hidden = !status;
     this._setText(E.status, "status", status);
@@ -505,7 +469,6 @@ class ThermostatCardBoschBthRa extends HTMLElement {
 
     this._renderTargets(s);
     this._renderModes(s);
-    this._renderPresets(s);
   }
 
   _actionLabel(s) {
@@ -578,38 +541,12 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     this._setHtml(E.modes, "modes", html);
   }
 
-  _presetLabel(s, p) {
-    try {
-      if (this._hass.formatEntityAttributeValue) {
-        const v = this._hass.formatEntityAttributeValue(s, "preset_mode", p);
-        if (v) return v;
-      }
-    } catch (e) { /* ignore */ }
-    const txt = String(p).replace(/_/g, " ");
-    return txt.charAt(0).toUpperCase() + txt.slice(1);
-  }
-
-  _renderPresets(s) {
-    const E = this._els;
-    const presets = s.attributes.preset_modes || [];
-    const show = this._config.show_presets && presets.length > 0;
-    E.presetsBlock.hidden = !show;
-    if (!show) return;
-    this._setText(E.presetTitle, "presetTitle", this._t.presets);
-    const current = s.attributes.preset_mode;
-    const html = presets
-      .map((p) => `<option value="${esc(p)}">${esc(this._presetLabel(s, p))}</option>`)
-      .join("");
-    this._setHtml(E.preset, "presets", html);
-    if (this.shadowRoot.activeElement !== E.preset) E.preset.value = current || presets[0];
-  }
 }
 
 // --- Éditeur visuel ------------------------------------------------------
 
 const EDITOR_SCHEMA_TAIL = [
   { name: "show_mode_title", selector: { boolean: {} } },
-  { name: "show_presets", selector: { boolean: {} } },
   { name: "show_settings", selector: { boolean: {} } },
 ];
 
@@ -633,7 +570,6 @@ const buildEditorSchema = (hass, entityId) => {
     { name: "name", selector: { text: {} } },
     { name: "icon", selector: { icon: {} } },
     { name: "heat_mode", selector: { select: { mode: "dropdown", options: heatOptions } } },
-    { name: "show_subtitle", selector: { boolean: {} } },
     { name: "show_status", selector: { boolean: {} } },
     { name: "step", selector: { number: { min: 0.1, max: 5, step: 0.1, mode: "box" } } },
     { name: "show_modes", selector: { boolean: {} } },
@@ -647,13 +583,11 @@ const EDITOR_LABELS = {
   name: "Nom (optionnel)",
   icon: "Icône du badge (optionnel)",
   heat_mode: "Mode activé par l'interrupteur (défaut : heat)",
-  show_subtitle: "Afficher « Température actuelle »",
   show_status: "Afficher l'état (Chauffe, Inactif…)",
   step: "Pas de température (optionnel)",
   show_modes: "Afficher les boutons de mode",
   modes: "Modes affichés (vide = tous)",
   show_mode_title: "Afficher le titre « Mode »",
-  show_presets: "Afficher les préréglages",
   show_settings: "Afficher l'icône réglages",
 };
 
@@ -696,11 +630,9 @@ class ThermostatCardBoschBthRaEditor extends HTMLElement {
       this._form.schema = schema;
     }
     this._form.data = {
-      show_subtitle: false,
       show_status: false,
       show_modes: false,
       show_mode_title: false,
-      show_presets: false,
       show_settings: false,
       ...this._config,
     };

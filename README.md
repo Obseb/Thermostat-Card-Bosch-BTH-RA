@@ -13,7 +13,6 @@ Fonctions conservées de la carte d'origine, désactivées par défaut pour gard
 
 - état en cours (Chauffe, Inactif, …) ;
 - boutons de mode construits à partir des `hvac_modes` de l'entité ;
-- menu déroulant des préréglages (`preset_modes`) ;
 - mode `heat_cool` : deux consignes (basse / haute) ;
 - icône ⚙ qui ouvre la fenêtre « plus d'infos » ;
 - éditeur visuel, textes en français ou anglais selon la langue de Home Assistant.
@@ -46,13 +45,11 @@ name: Cuisine
 | `name`          | string  | nom de l'entité | Titre de la carte                                                      |
 | `icon`          | string  | selon le mode   | Icône du badge (ex. `mdi:fire`). Par défaut : flamme, flamme barrée si éteint |
 | `heat_mode`     | string  | `heat`          | Mode activé quand on allume l'interrupteur (si absent de l'entité, le premier mode ≠ `off` est utilisé) |
-| `show_subtitle` | boolean | `false`         | Affiche « Température actuelle » sous le titre                         |
 | `show_status`   | boolean | `false`         | Affiche l'état en cours (Chauffe, Inactif, …) sous le titre            |
 | `step`          | number  | auto            | Pas de la consigne (1 en °F, 0,5 en °C par défaut)                     |
 | `show_modes`    | boolean | `false`         | Affiche les boutons de mode                                            |
 | `show_mode_title` | boolean | `false`       | Affiche le titre « Mode » au-dessus des boutons                        |
 | `modes`         | liste   | tous            | Modes affichés, dans cet ordre (aussi dans l'éditeur visuel)           |
-| `show_presets`  | boolean | `false`         | Affiche le menu de préréglages                                         |
 | `show_settings` | boolean | `false`         | Affiche l'icône ⚙ à gauche de l'interrupteur                           |
 
 ### L'interrupteur Off / Chauffe
