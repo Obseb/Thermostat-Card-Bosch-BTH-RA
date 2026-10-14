@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.0.0";
+const CARD_VERSION = "1.1.0";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -78,7 +78,7 @@ const STYLE = `
   :host { display: block; }
   ha-card {
     container-type: inline-size;
-    padding: 16px;
+    padding: 20px;
     background: var(--htc-card-bg, var(--ha-card-background, var(--card-background-color, #1c1c1c)));
     color: var(--primary-text-color, #fff);
     border-radius: var(--ha-card-border-radius, 24px);
@@ -117,7 +117,7 @@ const STYLE = `
 
   /* Interrupteur Off / Chauffe : sa couleur suit le mode (--htc-accent) */
   .switch {
-    --sw-h: clamp(30px, 11.5cqw, 44px);
+    --sw-h: clamp(24px, 9cqw, 34px);
     --sw-w: calc(var(--sw-h) * 2);
     --knob: calc(var(--sw-h) - 10px);
     position: relative; flex: 0 0 auto; box-sizing: border-box; padding: 0; cursor: pointer;
@@ -135,7 +135,7 @@ const STYLE = `
   .switch:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
 
   /* --- Corps : température actuelle | consigne ------------------------ */
-  .main { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3cqw; margin-top: 2cqw; }
+  .main { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3cqw; margin-top: 5cqw; }
   .current {
     display: flex; align-items: center; gap: 3cqw; min-width: 0; white-space: nowrap;
     color: var(--htc-accent); transition: color .3s;
@@ -147,14 +147,14 @@ const STYLE = `
   .main.dual .current .unit { font-size: 4.4cqw; margin-top: 0.8cqw; }
 
   .targets { display: flex; align-items: stretch; gap: 2cqw; }
-  .target { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 17cqw; }
+  .target { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 20cqw; }
   .target .label { font-size: 3.2cqw; font-weight: 500; letter-spacing: 0.03em; color: var(--htc-accent); }
   .arrow {
-    box-sizing: border-box; width: 14cqw; height: 12cqw; max-width: 56px; max-height: 48px; min-width: 40px; min-height: 36px;
+    box-sizing: border-box; width: 17cqw; height: 15cqw; max-width: 68px; max-height: 60px; min-width: 46px; min-height: 42px;
     padding: 0; border: none; border-radius: 14px; background: none;
     color: var(--primary-text-color); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    --mdc-icon-size: clamp(26px, 9.5cqw, 38px);
+    --mdc-icon-size: clamp(32px, 12cqw, 46px);
     transition: background .15s, transform .1s;
   }
   .arrow:hover { background: var(--htc-tile); }
@@ -162,11 +162,11 @@ const STYLE = `
   .arrow:disabled { opacity: .35; cursor: default; background: none; transform: none; }
   .target .val {
     display: flex; align-items: flex-start; gap: 2px; padding: 1.5cqw 0;
-    font-size: clamp(14px, 6cqw, 22px); font-weight: 500; line-height: 1.2; white-space: nowrap;
+    font-size: clamp(18px, 7.8cqw, 28px); font-weight: 500; line-height: 1.2; white-space: nowrap;
   }
   .target .val small { font-size: 0.62em; font-weight: 400; color: var(--htc-muted); margin-top: 0.05em; }
-  .targets.dual .val { font-size: clamp(12px, 4.6cqw, 18px); }
-  .targets.dual .arrow { width: 11cqw; min-width: 34px; }
+  .targets.dual .val { font-size: clamp(14px, 5.4cqw, 20px); }
+  .targets.dual .arrow { width: 12.5cqw; min-width: 38px; }
 
   /* --- Modes et préréglages (optionnels, comme la carte d'origine) ----- */
   .section-title { font-size: 4.2cqw; font-weight: 500; color: var(--htc-muted); margin: 20px 0 10px; }
