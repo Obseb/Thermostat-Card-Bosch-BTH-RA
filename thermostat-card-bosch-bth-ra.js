@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.5.1";
+const CARD_VERSION = "1.5.2";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -119,16 +119,7 @@ const STYLE = `
 
   /* --- En-tête : badge + nom | puissance + interrupteur ---------------- */
   .header { display: flex; justify-content: space-between; align-items: center; gap: ${U(3)}; }
-  .id { display: flex; align-items: center; gap: ${U(4)}; min-width: 0; }
-  .badgewrap { position: relative; flex: 0 0 auto; display: flex; }
-  /* Batterie faible : sous le badge, hors flux (n'influe pas sur la mise en page) */
-  .batt {
-    position: absolute; left: 50%; top: calc(100% + ${U(2.6)}); transform: translateX(-50%);
-    --mdc-icon-size: ${U(8.6)}; color: var(--error-color, #f44336);
-    animation: htc-blink 1.2s ease-in-out infinite;
-  }
-  @keyframes htc-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
-  @media (prefers-reduced-motion: reduce) { .batt { animation: none; } }
+  .id { display: flex; align-items: center; gap: ${U(4)}; min-width: 0; margin-right: ${U(11.6)}; }
   .badge {
     flex: 0 0 auto; box-sizing: border-box; margin: 0; padding: 0; border: none; font: inherit;
     width: ${U(15.3)}; height: ${U(15.3)}; border-radius: 50%;
@@ -144,23 +135,32 @@ const STYLE = `
   .badge:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
   .txt { min-width: 0; }
   .title {
-    font-size: ${U(7.1)}; font-weight: 500; line-height: 1.2;
+    font-size: ${U(7.5)}; font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .status { font-size: ${U(4.6)}; font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
 
-  .right { display: flex; align-items: center; gap: ${U(3)}; flex: 0 0 auto; }
+  .right { position: relative; display: flex; align-items: center; gap: ${U(3)}; flex: 0 0 auto; }
+  /* Batterie faible : à gauche de l'interrupteur, hors flux (n'influe pas sur la mise en page) */
+  .batt {
+    position: absolute; right: calc(100% + ${U(3)}); top: 50%; transform: translateY(-50%);
+    --mdc-icon-size: ${U(8.6)}; color: var(--error-color, #f44336);
+    animation: htc-blink 1.2s ease-in-out infinite;
+  }
+  @keyframes htc-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+  @media (prefers-reduced-motion: reduce) { .batt { animation: none; } }
 
-  /* Puissance de chauffe : petite flamme avec le pourcentage dedans */
+  /* Puissance de chauffe : petite flamme avec le pourcentage dedans,
+     centrée entre la température actuelle et la consigne */
   .power {
-    position: relative; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
-    width: ${U(13)}; height: ${U(13)}; color: var(--htc-accent);
-    transition: color .3s;
+    grid-column: 2; justify-self: center; align-self: center; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    width: ${U(11)}; height: ${U(11)}; color: var(--htc-accent); transition: color .3s;
   }
   .power svg { width: 100%; height: 100%; fill: currentColor; }
   .power span {
     position: absolute; left: 0; right: 0; top: 68%; transform: translateY(-50%);
-    text-align: center; font-size: ${U(3)}; font-weight: 700; line-height: 1; letter-spacing: -0.04em;
+    text-align: center; font-size: ${U(2.6)}; font-weight: 700; line-height: 1; letter-spacing: -0.04em;
     color: var(--htc-accent-bg);
   }
 
@@ -184,7 +184,9 @@ const STYLE = `
   .switch:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
 
   /* --- Corps : température actuelle | consigne ------------------------ */
-  .main { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: ${U(3)}; }
+  .main { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: ${U(3)}; }
+  .main .current { grid-column: 1; }
+  .main .targets { grid-column: 3; }
   .current {
     display: flex; align-items: center; gap: ${U(3)}; min-width: 0; white-space: nowrap;
     color: var(--htc-accent); transition: color .3s;
@@ -309,17 +311,14 @@ class ThermostatCardBoschBthRa extends HTMLElement {
         <div class="content">
           <div class="header">
             <div class="id">
-              <div class="badgewrap">
-                <button class="badge" data-act="badge"><ha-icon icon="${DEFAULT_BADGE_ICON}"></ha-icon></button>
-                <ha-icon class="batt" icon="mdi:battery-alert-variant-outline" role="img" hidden></ha-icon>
-              </div>
+              <button class="badge" data-act="badge"><ha-icon icon="${DEFAULT_BADGE_ICON}"></ha-icon></button>
               <div class="txt">
                 <div class="title"></div>
                 <div class="status"></div>
               </div>
             </div>
             <div class="right">
-              <div class="power" hidden>${FLAME_SVG}<span></span></div>
+              <ha-icon class="batt" icon="mdi:battery-alert-variant-outline" role="img" hidden></ha-icon>
               <button class="switch" role="switch" aria-checked="false" data-act="toggle"><span class="knob"></span></button>
             </div>
           </div>
@@ -329,6 +328,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
               <ha-icon class="thermo" icon="mdi:thermometer"></ha-icon>
               <span class="num"></span><span class="unit"></span>
             </div>
+            <div class="power" hidden>${FLAME_SVG}<span></span></div>
             <div class="targets"></div>
           </div>
           <div class="modes-block">

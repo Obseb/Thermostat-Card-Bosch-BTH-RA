@@ -5,8 +5,8 @@ Variante de [Obs Thermostat Card](https://github.com/Obseb/Thermostat-Card) pour
 Mêmes fonctionnalités et même thème que la carte d'origine, mais une disposition compacte :
 
 - **en haut à gauche** : badge rond (icône de l'entité, qui suit le mode) + nom de la pièce ; le badge est cliquable (action au choix) ;
-- **en haut à droite** : interrupteur **Off ⇄ Chauffe**, dont la couleur change selon le mode (saumon en chauffe, gris quand c'est éteint, etc.), précédé d'une petite flamme avec la puissance de chauffe si elle est renseignée ;
-- **à gauche** : température actuelle en grand, colorée selon le mode ;
+- **en haut à droite** : interrupteur **Off ⇄ Chauffe**, dont la couleur change selon le mode (saumon en chauffe, gris quand c'est éteint, etc.), précédé d'une petite icône de batterie rouge clignotante si la batterie est faible ;
+- **à gauche** : température actuelle en grand, colorée selon le mode ; entre les deux, une petite flamme avec la puissance de chauffe si elle est renseignée ;
 - **à droite** : consigne avec chevrons ▲ / ▼ (envoi différé de 0,9 s pour éviter de spammer l'API).
 
 Fonctions conservées de la carte d'origine, désactivées par défaut pour garder l'aspect compact :
@@ -46,7 +46,7 @@ name: Cuisine
 | `color`                | string ou [r, g, b] | saumon `#e8958a` | Couleur de surbrillance en mode chauffe (voir ci-dessous) |
 | `tap_action`           | action  | `more-info`     | Action au clic sur le badge (voir ci-dessous)                          |
 | `heating_power_entity` | string  | —               | Entité (`sensor`, `number`, `input_number`) qui donne la puissance de chauffe en % |
-| `battery_low_entity`   | string  | —               | Entité de batterie faible (ex. `binary_sensor.vanne_cuisine_battery_low`) : une petite batterie rouge clignote sous le badge quand elle est à `on` |
+| `battery_low_entity`   | string  | —               | Entité de batterie faible (ex. `binary_sensor.vanne_cuisine_battery_low`) : une petite batterie rouge clignote à gauche de l'interrupteur quand elle est à `on` |
 | `heat_mode`            | string  | `heat`          | Mode activé quand on allume l'interrupteur (si absent de l'entité, le premier mode ≠ `off` est utilisé) |
 | `show_status`          | boolean | `false`         | Affiche l'état en cours (Chauffe, Inactif, …) sous le titre            |
 | `step`                 | number  | auto            | Pas consigne de température (1 en °F, 0,5 en °C par défaut)           |
@@ -81,7 +81,7 @@ tap_action:
 
 ### Batterie faible
 
-Renseigne `battery_low_entity` avec l'entité de batterie faible de ta vanne. Quand son état est `on` (ou `low`), une petite icône de batterie rouge clignote sous le badge ; elle disparaît dès que l'état repasse à `off`. L'icône est placée hors de la mise en page : rien ne bouge dans la carte, qu'elle soit affichée ou non. Le clignotement est désactivé si le système demande de réduire les animations.
+Renseigne `battery_low_entity` avec l'entité de batterie faible de ta vanne. Quand son état est `on` (ou `low`), une petite icône de batterie rouge clignote à gauche de l'interrupteur ; elle disparaît dès que l'état repasse à `off`. L'icône est placée hors de la mise en page : rien ne bouge dans la carte, qu'elle soit affichée ou non. Le clignotement est désactivé si le système demande de réduire les animations.
 
 ```yaml
 type: custom:thermostat-card-bosch-bth-ra
@@ -91,7 +91,7 @@ battery_low_entity: binary_sensor.vanne_cuisine_battery_low
 
 ### Puissance de chauffe
 
-Renseigne `heating_power_entity` avec une entité dont l'état est un pourcentage (0 à 100). Quand la valeur est supérieure à 0, une petite flamme s'affiche à gauche de l'interrupteur avec le pourcentage à l'intérieur. À 0, elle disparaît.
+Renseigne `heating_power_entity` avec une entité dont l'état est un pourcentage (0 à 100). Quand la valeur est supérieure à 0, une petite flamme s'affiche entre la température actuelle et la consigne, avec le pourcentage à l'intérieur. À 0, elle disparaît.
 
 ```yaml
 type: custom:thermostat-card-bosch-bth-ra
@@ -149,4 +149,4 @@ git remote add origin https://github.com/<ton-user>/Thermostat-Card-Bosch-BTH-RA
 git push -u origin main
 ```
 
-Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.5.1`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
+Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.5.2`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
