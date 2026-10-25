@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.5.2";
+const CARD_VERSION = "1.5.3";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -155,12 +155,13 @@ const STYLE = `
   .power {
     grid-column: 2; justify-self: center; align-self: center; position: relative;
     display: flex; align-items: center; justify-content: center;
-    width: ${U(11)}; height: ${U(11)}; color: var(--htc-accent); transition: color .3s;
+    width: ${U(14.5)}; height: ${U(14.5)}; margin: 0 ${U(-1.75)}; /* marges négatives : l'encombrement reste 11u, rien ne bouge */
+    color: var(--htc-accent); transition: color .3s;
   }
   .power svg { width: 100%; height: 100%; fill: currentColor; }
   .power span {
     position: absolute; left: 0; right: 0; top: 68%; transform: translateY(-50%);
-    text-align: center; font-size: ${U(2.6)}; font-weight: 700; line-height: 1; letter-spacing: -0.04em;
+    text-align: center; font-size: ${U(3.6)}; font-weight: 700; line-height: 1; letter-spacing: -0.04em;
     color: var(--htc-accent-bg);
   }
 
