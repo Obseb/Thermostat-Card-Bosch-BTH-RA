@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.3.2";
+const CARD_VERSION = "1.4.0";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -47,6 +47,7 @@ const I18N = {
     cool: "COOL",
     power: "Heating on / off",
     notfound: "Entity not found",
+    nodata: "No data",
     actions: { heating: "Heating", cooling: "Cooling", idle: "Idle", off: "Off", drying: "Drying", fan: "Fan", defrosting: "Defrosting" },
   },
   fr: {
@@ -54,6 +55,7 @@ const I18N = {
     cool: "FROID",
     power: "Chauffage marche / arrêt",
     notfound: "Entité introuvable",
+    nodata: "Pas de données",
     actions: { heating: "Chauffe", cooling: "Refroidissement", idle: "Inactif", off: "Éteint", drying: "Déshumidification", fan: "Ventilation", defrosting: "Dégivrage" },
   },
 };
@@ -65,6 +67,54 @@ const esc = (s) =>
 const fmtTemp = (v) => {
   if (v === null || v === undefined || isNaN(v)) return "--";
   return (Math.round(Number(v) * 10) / 10).toFixed(1);
+};
+
+// --- Graphique : outils de tracé ----------------------------------------
+const GW = 300; // largeur du viewBox du graphique
+const GH = 60; // hauteur du viewBox du graphique
+const G_RIGHT = 0.975; // part de la largeur occupée par la période (le reste = marge pour le point final)
+const fx = (v) => Math.round(v * 100) / 100;
+
+// Moyenne par tranches de temps pour alléger les longues périodes
+const bucketize = (pts, t0, t1, n) => {
+  if (pts.length <= n) return pts;
+  const size = (t1 - t0) / n;
+  const out = [];
+  let i = 0;
+  for (let b = 0; b < n; b++) {
+    const hi = t0 + (b + 1) * size;
+    let sum = 0, tsum = 0, c = 0;
+    while (i < pts.length && pts[i].t < hi) { sum += pts[i].v; tsum += pts[i].t; c++; i++; }
+    if (c) out.push({ t: tsum / c, v: sum / c });
+  }
+  while (i < pts.length) out.push(pts[i++]);
+  return out;
+};
+
+// Courbe lissée (spline cubique monotone : pas de dépassement entre deux points)
+const smoothPath = (p) => {
+  const n = p.length;
+  if (!n) return "";
+  if (n === 1) return `M${fx(p[0].x)} ${fx(p[0].y)}`;
+  const dx = [], m = [];
+  for (let i = 0; i < n - 1; i++) {
+    dx[i] = p[i + 1].x - p[i].x;
+    m[i] = dx[i] > 0 ? (p[i + 1].y - p[i].y) / dx[i] : 0;
+  }
+  const t = [m[0]];
+  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  t[n - 1] = m[n - 2];
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+    const a = t[i] / m[i], b = t[i + 1] / m[i], q = a * a + b * b;
+    if (q > 9) { const k = 3 / Math.sqrt(q); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+  }
+  let d = `M${fx(p[0].x)} ${fx(p[0].y)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3;
+    d += ` C${fx(p[i].x + h)} ${fx(p[i].y + t[i] * h)} ${fx(p[i + 1].x - h)} ${fx(p[i + 1].y - t[i + 1] * h)} ${fx(p[i + 1].x)} ${fx(p[i + 1].y)}`;
+  }
+  return d;
 };
 
 // Toutes les tailles sont exprimées en « unités » : 1 unité = 1 % de la largeur
@@ -110,7 +160,7 @@ const STYLE = `
   .badge:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
   .txt { min-width: 0; }
   .title {
-    font-size: ${U(7.4)}; font-weight: 500; line-height: 1.2;
+    font-size: ${U(6.8)}; font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .status { font-size: ${U(4.6)}; font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
@@ -197,6 +247,51 @@ const STYLE = `
   .mode:hover { filter: brightness(1.25); }
   .mode.active { color: var(--c); background: var(--bg); }
 
+  /* --- Graphique température / consigne (optionnel) ------------------- */
+  .graph-block { margin-top: ${U(5.4)}; }
+  .graph {
+    position: relative; height: ${U(20)}; border-radius: ${U(6.9)}; background: var(--htc-tile);
+    color: var(--htc-accent); transition: color .3s; touch-action: pan-y; cursor: crosshair;
+  }
+  .gclip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+  .gclip svg { display: block; width: 100%; height: 100%; }
+  .gclip .area { stroke: none; }
+  .gclip .line {
+    fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+    vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 3px currentColor);
+  }
+  .gclip .gtgt {
+    fill: none; stroke: var(--primary-text-color, #fff); stroke-opacity: .5; stroke-width: 1.3;
+    stroke-dasharray: 4 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+  }
+  .gmax, .gmin {
+    position: absolute; left: ${U(2.6)}; font-size: ${U(2.9)}; line-height: 1; font-weight: 500;
+    color: var(--htc-muted); opacity: .85; pointer-events: none; letter-spacing: 0.02em;
+  }
+  .gmax { top: ${U(1.8)}; }
+  .gmin { bottom: ${U(1.8)}; }
+  .gdot {
+    position: absolute; width: ${U(2.8)}; height: ${U(2.8)}; border-radius: 50%; background: currentColor;
+    transform: translate(-50%, -50%); pointer-events: none;
+    box-shadow: 0 0 0 ${U(0.9)} var(--htc-tile), 0 0 ${U(3.2)} currentColor;
+  }
+  .gcursor { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--primary-text-color, #fff); opacity: .3; pointer-events: none; }
+  .gpt {
+    position: absolute; width: ${U(2.4)}; height: ${U(2.4)}; border-radius: 50%; background: var(--primary-text-color, #fff);
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .gtip {
+    position: absolute; bottom: calc(100% + ${U(1.6)}); transform: translateX(-50%); z-index: 2;
+    display: flex; align-items: baseline; gap: ${U(1.8)}; white-space: nowrap; pointer-events: none;
+    padding: ${U(1.2)} ${U(2.8)}; border-radius: ${U(3.4)}; font-size: ${U(3.7)}; font-weight: 500;
+    background: var(--htc-card-bg, var(--ha-card-background, var(--card-background-color, #1c1c1c)));
+    border: 1px solid var(--htc-tile); box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+  }
+  .gtip .c { color: var(--htc-accent); }
+  .gtip .t { color: var(--primary-text-color, #fff); opacity: .8; }
+  .gtip .h { color: var(--htc-muted); font-weight: 400; }
+  .gempty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: ${U(3.6)}; color: var(--htc-muted); pointer-events: none; }
+
   .error { padding: 16px; color: var(--error-color, #db4437); }
   [hidden] { display: none !important; }
 `;
@@ -225,6 +320,8 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     this._config = {
       show_status: false,
       show_modes: false,
+      show_graph: false,
+      graph_hours: 24,
       ...config,
     };
     this._build();
@@ -242,21 +339,26 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     }
     if (this._ro) this._ro.observe(this);
     this._scheduleFit();
+    clearInterval(this._graphTimer);
+    this._graphTimer = setInterval(() => this._graphTick(), 60000);
   }
 
   disconnectedCallback() {
     if (this._ro) this._ro.disconnect();
     cancelAnimationFrame(this._fitRaf);
+    clearInterval(this._graphTimer);
   }
 
   getCardSize() {
-    return 4 + (this._config && this._config.show_modes ? 1 : 0);
+    const c = this._config || {};
+    return 4 + (c.show_modes ? 1 : 0) + (c.show_graph ? 1 : 0);
   }
 
   // Taille par défaut dans la vue « sections » ; l'utilisateur peut la
   // modifier dans l'onglet « Mise en page » : la carte s'y adapte.
   getGridOptions() {
-    const rows = 4 + (this._config && this._config.show_modes ? 1 : 0);
+    const c = this._config || {};
+    const rows = 4 + (c.show_modes ? 1 : 0) + (c.show_graph ? 1 : 0);
     return { columns: 6, rows, min_columns: 3, min_rows: 2 };
   }
 
@@ -294,6 +396,27 @@ class ThermostatCardBoschBthRa extends HTMLElement {
           <div class="modes-block">
             <div class="modes"></div>
           </div>
+          <div class="graph-block" hidden>
+            <div class="graph">
+              <div class="gclip">
+                <svg viewBox="0 0 ${GW} ${GH}" preserveAspectRatio="none" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="gfill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stop-color="currentColor" stop-opacity="0.42"></stop>
+                      <stop offset="1" stop-color="currentColor" stop-opacity="0"></stop>
+                    </linearGradient>
+                  </defs>
+                  <path class="area" fill="url(#gfill)"></path>
+                  <path class="gtgt"></path>
+                  <path class="line"></path>
+                </svg>
+              </div>
+              <span class="gmax"></span><span class="gmin"></span>
+              <span class="gdot" hidden></span>
+              <div class="gcursor" hidden></div><span class="gpt" hidden></span><div class="gtip" hidden></div>
+              <div class="gempty" hidden></div>
+            </div>
+          </div>
         </div>
       </ha-card>`;
     const r = this.shadowRoot;
@@ -313,9 +436,23 @@ class ThermostatCardBoschBthRa extends HTMLElement {
       targets: r.querySelector(".targets"),
       modesBlock: r.querySelector(".modes-block"),
       modes: r.querySelector(".modes"),
+      graphBlock: r.querySelector(".graph-block"),
+      graph: r.querySelector(".graph"),
+      gArea: r.querySelector(".area"),
+      gLine: r.querySelector(".line"),
+      gTarget: r.querySelector(".gtgt"),
+      gMax: r.querySelector(".gmax"),
+      gMin: r.querySelector(".gmin"),
+      gDot: r.querySelector(".gdot"),
+      gCursor: r.querySelector(".gcursor"),
+      gPt: r.querySelector(".gpt"),
+      gTip: r.querySelector(".gtip"),
+      gEmpty: r.querySelector(".gempty"),
     };
+    this._bindGraph();
     r.addEventListener("click", (e) => this._onClick(e));
     this._cache = {};
+    this._graphSig = null;
     if (this._u) this._els.content.style.setProperty("--u", `${this._u}px`);
     this._built = true;
     this._scheduleFit();
@@ -573,7 +710,178 @@ class ThermostatCardBoschBthRa extends HTMLElement {
 
     this._renderTargets(s);
     this._renderModes(s);
+    this._graphSync();
     this._scheduleFit();
+  }
+
+  // --- graphique ----------------------------------------------------------
+
+  get _graphHours() {
+    return Math.min(720, Math.max(1, Number(this._config.graph_hours) || 24));
+  }
+
+  _graphTick() {
+    if (!this._built || !this._config.show_graph) return;
+    this._graphSig = null;
+    this._graphSync();
+  }
+
+  // Charge l'historique si besoin (changement de config, ou données de plus de 5 min), puis redessine
+  _graphSync() {
+    const c = this._config;
+    const E = this._els;
+    if (!E) return;
+    E.graphBlock.hidden = !c.show_graph;
+    if (!c.show_graph || !this._hass) return;
+    const key = `${c.entity}|${this._graphHours}`;
+    if (!this._graphLoading && (this._graphKey !== key || Date.now() - (this._graphFetched || 0) > 300000)) {
+      this._loadHistory(key);
+    }
+    const s = this._stateObj;
+    const a = (s && s.attributes) || {};
+    const sig = `${key}|${a.current_temperature}|${a.temperature}|${s && s.state}|${this._graphFetched}|${Math.floor(Date.now() / 60000)}`;
+    if (sig !== this._graphSig) {
+      this._graphSig = sig;
+      this._renderGraph();
+    }
+  }
+
+  async _loadHistory(key) {
+    this._graphLoading = true;
+    try {
+      const end = Date.now();
+      const start = end - this._graphHours * 3600000;
+      const res = await this._hass.callWS({
+        type: "history/history_during_period",
+        start_time: new Date(start).toISOString(),
+        end_time: new Date(end).toISOString(),
+        entity_ids: [this._config.entity],
+        minimal_response: false,
+        no_attributes: false,
+        significant_changes_only: false,
+      });
+      const items = (res && res[this._config.entity]) || [];
+      let attrs = {};
+      const num = (v) => (v === null || v === undefined || v === "" || isNaN(v) ? null : Number(v));
+      const pts = [];
+      for (const it of items) {
+        const t = it.lu != null ? it.lu * 1000 : Date.parse(it.last_updated || it.last_changed);
+        if (!isFinite(t)) continue;
+        const st = it.s !== undefined ? it.s : it.state;
+        attrs = it.a || it.attributes || attrs;
+        const bad = st === "unavailable" || st === "unknown";
+        const target = attrs.temperature != null ? attrs.temperature : attrs.target_temp_low;
+        pts.push({ t: Math.max(t, start), cur: bad ? null : num(attrs.current_temperature), tgt: bad ? null : num(target) });
+      }
+      this._graphPts = pts;
+      this._graphErr = false;
+    } catch (e) {
+      this._graphPts = null;
+      this._graphErr = true;
+    }
+    this._graphKey = key;
+    this._graphFetched = Date.now();
+    this._graphLoading = false;
+    this._graphSig = null;
+    this._graphSync();
+  }
+
+  _renderGraph() {
+    const E = this._els;
+    if (!this._built || !this._config.show_graph) return;
+    const t = this._t;
+    const hours = this._graphHours;
+    const now = Date.now();
+    const start = now - hours * 3600000;
+    const s = this._stateObj;
+    const raw = (this._graphPts || []).filter((p) => p.t <= now).map((p) => ({ ...p, t: Math.max(p.t, start) }));
+    if (s) {
+      const a = s.attributes;
+      const bad = s.state === "unavailable" || s.state === "unknown";
+      const num = (v) => (v === null || v === undefined || isNaN(v) ? null : Number(v));
+      const target = a.temperature != null ? a.temperature : a.target_temp_low;
+      raw.push({ t: now, cur: bad ? null : num(a.current_temperature), tgt: bad ? null : num(target) });
+    }
+    const curRaw = raw.filter((p) => p.cur !== null).map((p) => ({ t: p.t, v: p.cur }));
+    const tgtRaw = raw.map((p) => ({ t: p.t, v: p.tgt }));
+    this._g = null;
+    if (curRaw.length < 1) {
+      E.gArea.setAttribute("d", ""); E.gLine.setAttribute("d", ""); E.gTarget.setAttribute("d", "");
+      E.gDot.hidden = true; E.gMax.textContent = ""; E.gMin.textContent = "";
+      E.gEmpty.hidden = false;
+      E.gEmpty.textContent = t.nodata;
+      return;
+    }
+    E.gEmpty.hidden = true;
+    const cur = bucketize(curRaw, start, now, 120);
+    const vals = [...cur.map((p) => p.v), ...tgtRaw.filter((p) => p.v !== null).map((p) => p.v)];
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const real = { lo, hi };
+    const pad = Math.max(0.3, (hi - lo) * 0.18);
+    lo -= pad; hi += pad;
+    if (hi - lo < 1.5) { const mid = (hi + lo) / 2; lo = mid - 0.75; hi = mid + 0.75; }
+    const X = (tm) => ((tm - start) / (now - start)) * GW * G_RIGHT;
+    const Y = (v) => GH * 0.84 - ((v - lo) / (hi - lo)) * GH * 0.66;
+    const pts = cur.map((p) => ({ x: X(p.t), y: Y(p.v) }));
+    const line = smoothPath(pts);
+    const last = pts[pts.length - 1], first = pts[0];
+    E.gLine.setAttribute("d", line);
+    E.gArea.setAttribute("d", `${line} L${fx(last.x)} ${GH} L${fx(first.x)} ${GH} Z`);
+    // consigne : courbe en escalier, interrompue quand elle n'existe pas (mode off)
+    let d = "", open = false;
+    for (const p of tgtRaw) {
+      if (p.v === null) { open = false; continue; }
+      if (!open) { d += `M${fx(X(p.t))} ${fx(Y(p.v))} `; open = true; }
+      else d += `H${fx(X(p.t))} V${fx(Y(p.v))} `;
+    }
+    if (open) d += `H${fx(X(now))}`;
+    E.gTarget.setAttribute("d", d.trim());
+    E.gMax.textContent = `${fmtTemp(real.hi)}°`;
+    E.gMin.textContent = `${fmtTemp(real.lo)}°`;
+    E.gDot.hidden = false;
+    E.gDot.style.left = `${(last.x / GW) * 100}%`;
+    E.gDot.style.top = `${(last.y / GH) * 100}%`;
+    this._g = { start, now, cur, tgtRaw, X, Y };
+  }
+
+  _bindGraph() {
+    const E = this._els;
+    const g = E.graph;
+    const hide = () => { E.gCursor.hidden = true; E.gPt.hidden = true; E.gTip.hidden = true; };
+    const show = (ev) => {
+      const G = this._g;
+      if (!G) return;
+      const r = g.getBoundingClientRect();
+      if (!r.width) return;
+      const f = Math.min(G_RIGHT, Math.max(0, (ev.clientX - r.left) / r.width));
+      const tm = G.start + (f / G_RIGHT) * (G.now - G.start);
+      let best = G.cur[0];
+      for (const p of G.cur) if (Math.abs(p.t - tm) < Math.abs(best.t - tm)) best = p;
+      let tgt = null;
+      for (const p of G.tgtRaw) { if (p.t <= tm) tgt = p.v; else break; }
+      const unit = this._hass && this._hass.config.unit_system.temperature;
+      const lang = ((this._hass && this._hass.language) || "en").slice(0, 2);
+      const opts = this._graphHours > 24
+        ? { weekday: "short", hour: "2-digit", minute: "2-digit" }
+        : { hour: "2-digit", minute: "2-digit" };
+      let when = "";
+      try { when = new Date(tm).toLocaleString(lang, opts); } catch (e) { when = new Date(tm).toLocaleTimeString(); }
+      E.gTip.innerHTML =
+        `<span class="c">${fmtTemp(best.v)}${esc(unit || "°")}</span>` +
+        (tgt !== null ? `<span class="t">→ ${fmtTemp(tgt)}${esc(unit || "°")}</span>` : "") +
+        `<span class="h">${esc(when)}</span>`;
+      const pct = (f / 1) * 100;
+      E.gCursor.style.left = `${pct}%`;
+      E.gPt.style.left = `${(G.X(best.t) / GW) * 100}%`;
+      E.gPt.style.top = `${(G.Y(best.v) / GH) * 100}%`;
+      E.gTip.style.left = `${Math.min(80, Math.max(20, pct))}%`;
+      E.gCursor.hidden = false; E.gPt.hidden = false; E.gTip.hidden = false;
+    };
+    g.addEventListener("pointermove", show);
+    g.addEventListener("pointerdown", show);
+    g.addEventListener("pointerleave", hide);
+    g.addEventListener("pointercancel", hide);
+    g.addEventListener("pointerup", (ev) => { if (ev.pointerType !== "mouse") setTimeout(hide, 1500); });
   }
 
   // Icône du badge : `icon` de la config si présent, sinon l'icône d'état de
@@ -712,6 +1020,8 @@ const buildEditorSchema = (hass, entityId) => {
     { name: "step", selector: { number: { min: 0.1, max: 5, step: 0.1, mode: "box" } } },
     { name: "show_modes", selector: { boolean: {} } },
     { name: "modes", selector: { select: { multiple: true, mode: "list", options } } },
+    { name: "show_graph", selector: { boolean: {} } },
+    { name: "graph_hours", selector: { number: { min: 1, max: 720, step: 1, mode: "box", unit_of_measurement: "h" } } },
   ];
 };
 
@@ -726,6 +1036,8 @@ const EDITOR_LABELS = {
   step: "Pas consigne de température (optionnel)",
   show_modes: "Afficher les boutons de mode",
   modes: "Modes affichés (vide = tous)",
+  show_graph: "Afficher le graphique (température et consigne)",
+  graph_hours: "Durée du graphique en heures (défaut : 24)",
 };
 
 class ThermostatCardBoschBthRaEditor extends HTMLElement {
@@ -769,6 +1081,8 @@ class ThermostatCardBoschBthRaEditor extends HTMLElement {
     this._form.data = {
       show_status: false,
       show_modes: false,
+      show_graph: false,
+      graph_hours: 24,
       ...this._config,
     };
   }
