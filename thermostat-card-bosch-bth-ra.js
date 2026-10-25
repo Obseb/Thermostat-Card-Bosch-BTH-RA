@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.3.2";
+const CARD_VERSION = "1.3.3";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -67,6 +67,22 @@ const fmtTemp = (v) => {
   return (Math.round(Number(v) * 10) / 10).toFixed(1);
 };
 
+// Couleur personnalisée : tableau [r, g, b] (sélecteur de l'éditeur) ou chaîne CSS
+// (#e8958a, rgb(...), hsl(...), nom, var(--primary-color)). Renvoie null si invalide.
+const resolveColor = (v) => {
+  let c = null;
+  if (Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every((n) => isFinite(n))) {
+    c = `rgb(${v.slice(0, 3).map((n) => Math.round(Number(n))).join(", ")})`;
+  } else if (typeof v === "string" && v.trim()) {
+    c = v.trim();
+  }
+  if (!c) return null;
+  try {
+    if (typeof CSS !== "undefined" && CSS.supports && !CSS.supports("color", c)) return null;
+  } catch (e) { /* ignore */ }
+  return c;
+};
+
 // Toutes les tailles sont exprimées en « unités » : 1 unité = 1 % de la largeur
 // de référence de référence de la carte (REF_W). La variable --u est recalculée en JS (_fit) pour que
 // la carte tienne dans la largeur ET la hauteur données par la mise en page.
@@ -110,7 +126,7 @@ const STYLE = `
   .badge:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
   .txt { min-width: 0; }
   .title {
-    font-size: ${U(7.4)}; font-weight: 500; line-height: 1.2;
+    font-size: ${U(6.8)}; font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .status { font-size: ${U(4.6)}; font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
@@ -250,13 +266,15 @@ class ThermostatCardBoschBthRa extends HTMLElement {
   }
 
   getCardSize() {
-    return 4 + (this._config && this._config.show_modes ? 1 : 0);
+    const c = this._config || {};
+    return 4 + (c.show_modes ? 1 : 0);
   }
 
   // Taille par défaut dans la vue « sections » ; l'utilisateur peut la
   // modifier dans l'onglet « Mise en page » : la carte s'y adapte.
   getGridOptions() {
-    const rows = 4 + (this._config && this._config.show_modes ? 1 : 0);
+    const c = this._config || {};
+    const rows = 4 + (c.show_modes ? 1 : 0);
     return { columns: 6, rows, min_columns: 3, min_rows: 2 };
   }
 
@@ -548,9 +566,8 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     E.status.hidden = !status;
     this._setText(E.status, "status", status);
 
-    // Couleurs selon le mode (identiques à la carte d'origine)
-    const color = MODE_COLORS[key] || MODE_COLORS.heat;
-    const bg = MODE_TILE_BG[key] || MODE_TILE_BG.heat;
+    // Couleurs selon le mode (identiques à la carte d'origine, `color` remplace celle du mode chauffe)
+    const [color, bg] = this._modeColors(key);
     E.card.style.setProperty("--htc-accent", color);
     E.card.style.setProperty("--htc-accent-bg", bg);
 
@@ -601,6 +618,23 @@ class ThermostatCardBoschBthRa extends HTMLElement {
       el.setAttribute("icon", icon);
       this._cache.badgeIcon = icon;
     }
+  }
+
+  // [couleur, fond sombre] d'un mode. Pour le mode chauffe, `color` (si défini)
+  // remplace le saumon ; le fond sombre est dérivé automatiquement (32 % de la couleur sur noir,
+  // ce qui redonne le fond d'origine pour le saumon).
+  _modeColors(mode) {
+    let color = MODE_COLORS[mode] || MODE_COLORS.heat;
+    let bg = MODE_TILE_BG[mode] || MODE_TILE_BG.heat;
+    if (mode === "heat") {
+      const custom = resolveColor(this._config.color);
+      if (custom) {
+        color = custom;
+        const mix = `color-mix(in srgb, ${custom} 32%, black)`;
+        if (typeof CSS === "undefined" || !CSS.supports || CSS.supports("color", mix)) bg = mix;
+      }
+    }
+    return [color, bg];
   }
 
   _heatingPower() {
@@ -674,8 +708,9 @@ class ThermostatCardBoschBthRa extends HTMLElement {
         try {
           label = this._hass.localize(`component.climate.entity_component._.state.${m}`) || m;
         } catch (e) { /* ignore */ }
+        const [mc, mbg] = this._modeColors(m);
         return `<button class="mode ${active ? "active" : ""}" data-mode="${esc(m)}" title="${esc(label)}"
-          style="--c:${MODE_COLORS[m] || "#e8958a"};--bg:${MODE_TILE_BG[m] || "#48322f"}"><ha-icon icon="${icon}"></ha-icon></button>`;
+          style="--c:${esc(mc)};--bg:${esc(mbg)}"><ha-icon icon="${icon}"></ha-icon></button>`;
       })
       .join("");
     this._setHtml(E.modes, "modes", html);
@@ -705,6 +740,7 @@ const buildEditorSchema = (hass, entityId) => {
     { name: "entity", required: true, selector: { entity: { domain: "climate" } } },
     { name: "name", selector: { text: {} } },
     { name: "icon", selector: { icon: {} } },
+    { name: "color", selector: { color_rgb: {} } },
     { name: "tap_action", selector: { ui_action: { default_action: "more-info", actions: TAP_ACTIONS } } },
     { name: "heating_power_entity", selector: { entity: { domain: ["sensor", "number", "input_number"] } } },
     { name: "heat_mode", selector: { select: { mode: "dropdown", options: heatOptions } } },
@@ -719,6 +755,7 @@ const EDITOR_LABELS = {
   entity: "Entité (climate)",
   name: "Nom (optionnel)",
   icon: "Icône du badge (optionnel)",
+  color: "Couleur de surbrillance en chauffe (optionnel, défaut : saumon)",
   tap_action: "Action au clic sur l'icône",
   heating_power_entity: "Puissance de chauffe (entité en %, optionnel)",
   heat_mode: "Mode activé par l'interrupteur (défaut : heat)",
@@ -749,7 +786,7 @@ class ThermostatCardBoschBthRaEditor extends HTMLElement {
         ev.stopPropagation();
         const value = { ...ev.detail.value };
         if (Array.isArray(value.modes) && value.modes.length === 0) delete value.modes;
-        for (const k of ["name", "icon", "heat_mode", "heating_power_entity"]) {
+        for (const k of ["name", "icon", "color", "heat_mode", "heating_power_entity"]) {
           if (value[k] === "" || value[k] == null) delete value[k];
         }
         this._config = value;

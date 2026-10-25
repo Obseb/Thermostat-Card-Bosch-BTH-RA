@@ -43,6 +43,7 @@ name: Cuisine
 | `entity`               | string  | **requis**      | Entité `climate.xxx`                                                   |
 | `name`                 | string  | nom de l'entité | Titre de la carte                                                      |
 | `icon`                 | string  | icône de l'entité | Icône du badge. Par défaut : l'icône d'état de l'entité telle que Home Assistant l'affiche, qui varie avec le mode (flamme en chauffe, bouton power à l'arrêt, …) |
+| `color`                | string ou [r, g, b] | saumon `#e8958a` | Couleur de surbrillance en mode chauffe (voir ci-dessous) |
 | `tap_action`           | action  | `more-info`     | Action au clic sur le badge (voir ci-dessous)                          |
 | `heating_power_entity` | string  | —               | Entité (`sensor`, `number`, `input_number`) qui donne la puissance de chauffe en % |
 | `heat_mode`            | string  | `heat`          | Mode activé quand on allume l'interrupteur (si absent de l'entité, le premier mode ≠ `off` est utilisé) |
@@ -106,6 +107,20 @@ modes:
 ```
 > Pense aux guillemets autour de `"off"` en YAML (sinon il est lu comme `false`).
 
+### Couleur de surbrillance
+
+`color` remplace le saumon utilisé en mode chauffe : badge, contour et pastille de l'interrupteur, température actuelle, libellés et bouton de mode actif. Le fond sombre associé (derrière l'interrupteur et le bouton actif) est calculé automatiquement à partir de la couleur choisie. Les autres modes gardent leurs couleurs (gris à l'arrêt, bleu en refroidissement, jaune en auto).
+
+Dans l'éditeur visuel, un sélecteur de couleur est proposé. En YAML, tout format CSS est accepté :
+
+```yaml
+type: custom:thermostat-card-bosch-bth-ra
+entity: climate.cuisine
+color: "#4fd1c5"          # ou rgb(79, 209, 197), ou var(--primary-color)
+```
+
+Supprime la ligne `color` du YAML pour revenir au saumon.
+
 ### Personnalisation du thème
 
 Variables CSS utilisables (ex. avec card-mod) : `--htc-card-bg`, `--htc-tile-bg`.
@@ -123,4 +138,4 @@ git remote add origin https://github.com/<ton-user>/Thermostat-Card-Bosch-BTH-RA
 git push -u origin main
 ```
 
-Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.3.2`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
+Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.3.3`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
