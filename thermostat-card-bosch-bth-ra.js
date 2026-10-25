@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.3.3";
+const CARD_VERSION = "1.5.1";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -46,6 +46,7 @@ const I18N = {
     heat: "HEAT",
     cool: "COOL",
     power: "Heating on / off",
+    battery: "Low battery",
     notfound: "Entity not found",
     actions: { heating: "Heating", cooling: "Cooling", idle: "Idle", off: "Off", drying: "Drying", fan: "Fan", defrosting: "Defrosting" },
   },
@@ -53,6 +54,7 @@ const I18N = {
     heat: "CHAUD",
     cool: "FROID",
     power: "Chauffage marche / arrêt",
+    battery: "Batterie faible",
     notfound: "Entité introuvable",
     actions: { heating: "Chauffe", cooling: "Refroidissement", idle: "Inactif", off: "Éteint", drying: "Déshumidification", fan: "Ventilation", defrosting: "Dégivrage" },
   },
@@ -95,7 +97,7 @@ const STYLE = `
   :host { display: block; height: 100%; }
   ha-card {
     container-type: inline-size;
-    display: flex; flex-direction: column; justify-content: center;
+    display: flex; flex-direction: column; justify-content: flex-start;
     height: 100%; box-sizing: border-box; overflow: hidden;
     background: var(--htc-card-bg, var(--ha-card-background, var(--card-background-color, #1c1c1c)));
     color: var(--primary-text-color, #fff);
@@ -106,11 +108,27 @@ const STYLE = `
     --htc-accent: #e8958a;
     --htc-accent-bg: #48322f;
   }
-  .content { flex: 0 0 auto; box-sizing: border-box; padding: ${U(PAD_Y)} ${U(PAD_X)}; }
+  .content {
+    flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    box-sizing: border-box; padding: ${U(PAD_Y)} ${U(PAD_X)};
+  }
+  .header { flex: 0 0 auto; }
+  /* Corps (température + consigne + modes) : centré verticalement dans l'espace sous l'en-tête */
+  .body { flex: 1 1 auto; min-height: 0; margin-top: ${U(7)}; display: flex; flex-direction: column; justify-content: center; }
+  .bodyinner { flex: 0 0 auto; }
 
   /* --- En-tête : badge + nom | puissance + interrupteur ---------------- */
   .header { display: flex; justify-content: space-between; align-items: center; gap: ${U(3)}; }
   .id { display: flex; align-items: center; gap: ${U(4)}; min-width: 0; }
+  .badgewrap { position: relative; flex: 0 0 auto; display: flex; }
+  /* Batterie faible : sous le badge, hors flux (n'influe pas sur la mise en page) */
+  .batt {
+    position: absolute; left: 50%; top: calc(100% + ${U(2.6)}); transform: translateX(-50%);
+    --mdc-icon-size: ${U(8.6)}; color: var(--error-color, #f44336);
+    animation: htc-blink 1.2s ease-in-out infinite;
+  }
+  @keyframes htc-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+  @media (prefers-reduced-motion: reduce) { .batt { animation: none; } }
   .badge {
     flex: 0 0 auto; box-sizing: border-box; margin: 0; padding: 0; border: none; font: inherit;
     width: ${U(15.3)}; height: ${U(15.3)}; border-radius: 50%;
@@ -126,7 +144,7 @@ const STYLE = `
   .badge:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
   .txt { min-width: 0; }
   .title {
-    font-size: ${U(6.8)}; font-weight: 500; line-height: 1.2;
+    font-size: ${U(7.1)}; font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .status { font-size: ${U(4.6)}; font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
@@ -166,7 +184,7 @@ const STYLE = `
   .switch:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
 
   /* --- Corps : température actuelle | consigne ------------------------ */
-  .main { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: ${U(3)}; margin-top: ${U(7)}; }
+  .main { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: ${U(3)}; }
   .current {
     display: flex; align-items: center; gap: ${U(3)}; min-width: 0; white-space: nowrap;
     color: var(--htc-accent); transition: color .3s;
@@ -291,7 +309,10 @@ class ThermostatCardBoschBthRa extends HTMLElement {
         <div class="content">
           <div class="header">
             <div class="id">
-              <button class="badge" data-act="badge"><ha-icon icon="${DEFAULT_BADGE_ICON}"></ha-icon></button>
+              <div class="badgewrap">
+                <button class="badge" data-act="badge"><ha-icon icon="${DEFAULT_BADGE_ICON}"></ha-icon></button>
+                <ha-icon class="batt" icon="mdi:battery-alert-variant-outline" role="img" hidden></ha-icon>
+              </div>
               <div class="txt">
                 <div class="title"></div>
                 <div class="status"></div>
@@ -302,6 +323,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
               <button class="switch" role="switch" aria-checked="false" data-act="toggle"><span class="knob"></span></button>
             </div>
           </div>
+          <div class="body"><div class="bodyinner">
           <div class="main">
             <div class="current">
               <ha-icon class="thermo" icon="mdi:thermometer"></ha-icon>
@@ -312,14 +334,19 @@ class ThermostatCardBoschBthRa extends HTMLElement {
           <div class="modes-block">
             <div class="modes"></div>
           </div>
+          </div></div>
         </div>
       </ha-card>`;
     const r = this.shadowRoot;
     this._els = {
       error: r.querySelector(".error"),
       content: r.querySelector(".content"),
+      header: r.querySelector(".header"),
+      body: r.querySelector(".body"),
+      bodyInner: r.querySelector(".bodyinner"),
       card: r.querySelector("ha-card"),
       badge: r.querySelector(".badge"),
+      batt: r.querySelector(".batt"),
       title: r.querySelector(".title"),
       status: r.querySelector(".status"),
       sw: r.querySelector(".switch"),
@@ -356,8 +383,11 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     const h = E.card.clientHeight;
     if (!w || !h) return;
     const cur = this._u || w / REF_W;
-    const contentH = E.content.offsetHeight;
-    if (!contentH) return;
+    const cs = getComputedStyle(E.content);
+    const padV = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    const gap = parseFloat(getComputedStyle(E.body).marginTop) || 0;
+    const contentH = padV + E.header.offsetHeight + gap + E.bodyInner.offsetHeight;
+    if (!E.header.offsetHeight || !E.bodyInner.offsetHeight) return;
     const heightInUnits = contentH / cur;
     const u = Math.round(Math.min(w / REF_W, h / heightInUnits) * 100) / 100;
     if (!isFinite(u) || u <= 0) return;
@@ -559,6 +589,12 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     const name = this._config.name || a.friendly_name || this._config.entity;
     this._setText(E.title, "title", name);
     E.badge.setAttribute("aria-label", name);
+    const low = this._batteryLow();
+    E.batt.hidden = !low;
+    if (low) {
+      E.batt.setAttribute("title", t.battery);
+      E.batt.setAttribute("aria-label", t.battery);
+    }
     const clickable = this._tapAction.action !== "none";
     E.badge.classList.toggle("clickable", clickable);
     E.badge.tabIndex = clickable ? 0 : -1;
@@ -635,6 +671,14 @@ class ThermostatCardBoschBthRa extends HTMLElement {
       }
     }
     return [color, bg];
+  }
+
+  // Batterie faible : l'entité renseignée (ex. binary_sensor.xxx_battery_low) est à « on » (ou « low »)
+  _batteryLow() {
+    const id = this._config.battery_low_entity;
+    if (!id || !this._hass) return false;
+    const st = this._hass.states[id];
+    return !!st && ["on", "low"].includes(String(st.state).toLowerCase());
   }
 
   _heatingPower() {
@@ -743,6 +787,7 @@ const buildEditorSchema = (hass, entityId) => {
     { name: "color", selector: { color_rgb: {} } },
     { name: "tap_action", selector: { ui_action: { default_action: "more-info", actions: TAP_ACTIONS } } },
     { name: "heating_power_entity", selector: { entity: { domain: ["sensor", "number", "input_number"] } } },
+    { name: "battery_low_entity", selector: { entity: { domain: ["binary_sensor", "sensor"] } } },
     { name: "heat_mode", selector: { select: { mode: "dropdown", options: heatOptions } } },
     { name: "show_status", selector: { boolean: {} } },
     { name: "step", selector: { number: { min: 0.1, max: 5, step: 0.1, mode: "box" } } },
@@ -758,6 +803,7 @@ const EDITOR_LABELS = {
   color: "Couleur de surbrillance en chauffe (optionnel, défaut : saumon)",
   tap_action: "Action au clic sur l'icône",
   heating_power_entity: "Puissance de chauffe (entité en %, optionnel)",
+  battery_low_entity: "Batterie faible (ex. binary_sensor …_battery_low, optionnel)",
   heat_mode: "Mode activé par l'interrupteur (défaut : heat)",
   show_status: "Afficher l'état (Chauffe, Inactif…)",
   step: "Pas consigne de température (optionnel)",
@@ -786,7 +832,7 @@ class ThermostatCardBoschBthRaEditor extends HTMLElement {
         ev.stopPropagation();
         const value = { ...ev.detail.value };
         if (Array.isArray(value.modes) && value.modes.length === 0) delete value.modes;
-        for (const k of ["name", "icon", "color", "heat_mode", "heating_power_entity"]) {
+        for (const k of ["name", "icon", "color", "heat_mode", "heating_power_entity", "battery_low_entity"]) {
           if (value[k] === "" || value[k] == null) delete value[k];
         }
         this._config = value;
