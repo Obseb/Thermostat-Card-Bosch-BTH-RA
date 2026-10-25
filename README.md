@@ -13,7 +13,6 @@ Fonctions conservées de la carte d'origine, désactivées par défaut pour gard
 
 - état en cours (Chauffe, Inactif, …) ;
 - boutons de mode construits à partir des `hvac_modes` de l'entité ;
-- graphique de suivi de la température et de la consigne sur une durée paramétrable ;
 - mode `heat_cool` : deux consignes (basse / haute) ;
 - éditeur visuel, textes en français ou anglais selon la langue de Home Assistant.
 
@@ -51,8 +50,6 @@ name: Cuisine
 | `step`                 | number  | auto            | Pas consigne de température (1 en °F, 0,5 en °C par défaut)           |
 | `show_modes`           | boolean | `false`         | Affiche les boutons de mode                                            |
 | `modes`                | liste   | tous            | Modes affichés, dans cet ordre (aussi dans l'éditeur visuel)           |
-| `show_graph`           | boolean | `false`         | Affiche le graphique de température et de consigne en bas de la carte  |
-| `graph_hours`          | number  | `24`            | Durée du graphique, en heures (1 à 720)                                |
 
 ### L'interrupteur Off / Chauffe
 
@@ -90,29 +87,9 @@ entity: climate.cuisine
 heating_power_entity: sensor.cuisine_puissance_chauffe
 ```
 
-### Graphique de température et de consigne
-
-Active `show_graph` pour afficher, en bas de la carte, un graphique de la même hauteur que les boutons de mode :
-
-- **courbe pleine** : la température actuelle (`current_temperature`), lissée, avec un dégradé et un point lumineux sur la valeur du moment ;
-- **courbe en pointillés** : la consigne (`temperature`), en escalier ; elle s'interrompt quand le thermostat est éteint ;
-- **mini-repères** en haut et en bas à gauche : température maximale et minimale de la période ;
-- **au survol ou au toucher** : un curseur affiche la température, la consigne et l'heure (avec le jour si la durée dépasse 24 h).
-
-Les couleurs suivent le mode de l'entité, comme le reste de la carte.
-
-```yaml
-type: custom:thermostat-card-bosch-bth-ra
-entity: climate.cuisine
-show_graph: true
-graph_hours: 48
-```
-
-Le graphique lit l'historique de l'entité `climate` via Home Assistant : il n'a besoin d'aucune autre carte (apexcharts-card n'est pas nécessaire) et utilise l'historique du *recorder*, qui doit donc conserver l'entité. Les données sont rechargées toutes les 5 minutes, et la courbe avance chaque minute.
-
 ### Taille et mise en page
 
-La carte respecte la taille réglée dans l'onglet **Mise en page** (vue « sections ») : la hauteur choisie est conservée quand on élargit la carte, et le contenu s'adapte à la largeur et à la hauteur disponibles. Par défaut : 6 colonnes × 4 lignes, avec une ligne de plus pour `show_modes` et une autre pour `show_graph`.
+La carte respecte la taille réglée dans l'onglet **Mise en page** (vue « sections ») : la hauteur choisie est conservée quand on élargit la carte, et le contenu s'adapte à la largeur et à la hauteur disponibles. Par défaut : 6 colonnes × 4 lignes (5 lignes avec `show_modes`).
 
 ### Choisir les modes affichés
 
@@ -146,4 +123,4 @@ git remote add origin https://github.com/<ton-user>/Thermostat-Card-Bosch-BTH-RA
 git push -u origin main
 ```
 
-Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.4.0`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
+Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.3.2`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
