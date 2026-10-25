@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.3.0";
+const CARD_VERSION = "1.3.2";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -18,7 +18,7 @@ const MODE_ICONS = {
   fan_only: "mdi:fan",
   off: "mdi:power",
 };
-const BADGE_ICON = "mdi:fire"; // icône du badge : fixe, quel que soit le mode
+const DEFAULT_BADGE_ICON = "mdi:thermostat"; // repli ultime (entité indisponible, par exemple)
 // Flamme pleine (puissance de chauffe) : le texte du pourcentage reste lisible dedans
 const FLAME_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 0.67s0.74 2.65 0.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l0.03-0.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5 0.67z"/></svg>`;
 const MODE_ORDER = ["heat", "heat_cool", "auto", "cool", "dry", "fan_only", "off"];
@@ -70,7 +70,9 @@ const fmtTemp = (v) => {
 // Toutes les tailles sont exprimées en « unités » : 1 unité = 1 % de la largeur
 // de référence de référence de la carte (REF_W). La variable --u est recalculée en JS (_fit) pour que
 // la carte tienne dans la largeur ET la hauteur données par la mise en page.
-const REF_W = 117; // largeur de référence, en unités
+const PAD_X = 6.2; // marge intérieure horizontale (unités)
+const PAD_Y = 7.0; // marge intérieure verticale (unités)
+const REF_W = 100 + 2 * PAD_X; // largeur de référence de la carte, en unités
 const U = (k) => `calc(var(--u, ${(100 / REF_W).toFixed(4)}cqw) * ${k})`;
 
 const STYLE = `
@@ -88,7 +90,7 @@ const STYLE = `
     --htc-accent: #e8958a;
     --htc-accent-bg: #48322f;
   }
-  .content { flex: 0 0 auto; box-sizing: border-box; padding: ${U(9.2)} ${U(8.4)}; }
+  .content { flex: 0 0 auto; box-sizing: border-box; padding: ${U(PAD_Y)} ${U(PAD_X)}; }
 
   /* --- En-tête : badge + nom | puissance + interrupteur ---------------- */
   .header { display: flex; justify-content: space-between; align-items: center; gap: ${U(3)}; }
@@ -108,7 +110,7 @@ const STYLE = `
   .badge:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
   .txt { min-width: 0; }
   .title {
-    font-size: ${U(8.3)}; font-weight: 500; line-height: 1.2;
+    font-size: ${U(7.4)}; font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .status { font-size: ${U(4.6)}; font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
@@ -271,7 +273,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
         <div class="content">
           <div class="header">
             <div class="id">
-              <button class="badge" data-act="badge"><ha-icon icon="${BADGE_ICON}"></ha-icon></button>
+              <button class="badge" data-act="badge"><ha-icon icon="${DEFAULT_BADGE_ICON}"></ha-icon></button>
               <div class="txt">
                 <div class="title"></div>
                 <div class="status"></div>
@@ -552,12 +554,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     E.card.style.setProperty("--htc-accent", color);
     E.card.style.setProperty("--htc-accent-bg", bg);
 
-    // Icône du badge : fixe (ou personnalisée), elle ne change pas avec le mode
-    const icon = this._config.icon || BADGE_ICON;
-    if (this._cache.badge !== icon) {
-      E.badge.querySelector("ha-icon").setAttribute("icon", icon);
-      this._cache.badge = icon;
-    }
+    this._renderBadgeIcon(s);
 
     // Interrupteur
     E.sw.classList.toggle("on", on);
@@ -577,6 +574,33 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     this._renderTargets(s);
     this._renderModes(s);
     this._scheduleFit();
+  }
+
+  // Icône du badge : `icon` de la config si présent, sinon l'icône d'état de
+  // l'entité telle que Home Assistant l'affiche (elle varie avec le mode).
+  // Repli si <ha-state-icon> n'existe pas : attribut `icon`, puis icône du mode.
+  _renderBadgeIcon(s) {
+    const E = this._els;
+    const cfgIcon = this._config.icon;
+    const useState = !cfgIcon && !!customElements.get("ha-state-icon");
+    const kind = cfgIcon ? "cfg" : useState ? "state" : "fallback";
+    if (this._cache.badgeKind !== kind) {
+      E.badge.innerHTML = "";
+      E.badge.appendChild(document.createElement(kind === "state" ? "ha-state-icon" : "ha-icon"));
+      this._cache.badgeKind = kind;
+      this._cache.badgeIcon = null;
+    }
+    const el = E.badge.firstElementChild;
+    if (kind === "state") {
+      el.hass = this._hass;
+      el.stateObj = s;
+      return;
+    }
+    const icon = cfgIcon || s.attributes.icon || MODE_ICONS[s.state] || DEFAULT_BADGE_ICON;
+    if (this._cache.badgeIcon !== icon) {
+      el.setAttribute("icon", icon);
+      this._cache.badgeIcon = icon;
+    }
   }
 
   _heatingPower() {

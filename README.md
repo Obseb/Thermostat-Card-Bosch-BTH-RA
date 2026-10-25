@@ -4,7 +4,7 @@ Variante de [Obs Thermostat Card](https://github.com/Obseb/Thermostat-Card) pour
 
 Mêmes fonctionnalités et même thème que la carte d'origine, mais une disposition compacte :
 
-- **en haut à gauche** : badge rond (flamme, toujours la même icône) + nom de la pièce ; le badge est cliquable (action au choix) ;
+- **en haut à gauche** : badge rond (icône de l'entité, qui suit le mode) + nom de la pièce ; le badge est cliquable (action au choix) ;
 - **en haut à droite** : interrupteur **Off ⇄ Chauffe**, dont la couleur change selon le mode (saumon en chauffe, gris quand c'est éteint, etc.), précédé d'une petite flamme avec la puissance de chauffe si elle est renseignée ;
 - **à gauche** : température actuelle en grand, colorée selon le mode ;
 - **à droite** : consigne avec chevrons ▲ / ▼ (envoi différé de 0,9 s pour éviter de spammer l'API).
@@ -42,7 +42,7 @@ name: Cuisine
 |------------------------|---------|-----------------|------------------------------------------------------------------------|
 | `entity`               | string  | **requis**      | Entité `climate.xxx`                                                   |
 | `name`                 | string  | nom de l'entité | Titre de la carte                                                      |
-| `icon`                 | string  | `mdi:fire`      | Icône du badge. Elle est fixe : elle ne change pas avec le mode        |
+| `icon`                 | string  | icône de l'entité | Icône du badge. Par défaut : l'icône d'état de l'entité telle que Home Assistant l'affiche, qui varie avec le mode (flamme en chauffe, bouton power à l'arrêt, …) |
 | `tap_action`           | action  | `more-info`     | Action au clic sur le badge (voir ci-dessous)                          |
 | `heating_power_entity` | string  | —               | Entité (`sensor`, `number`, `input_number`) qui donne la puissance de chauffe en % |
 | `heat_mode`            | string  | `heat`          | Mode activé quand on allume l'interrupteur (si absent de l'entité, le premier mode ≠ `off` est utilisé) |
@@ -123,4 +123,4 @@ git remote add origin https://github.com/<ton-user>/Thermostat-Card-Bosch-BTH-RA
 git push -u origin main
 ```
 
-Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.3.0`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
+Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.3.2`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
