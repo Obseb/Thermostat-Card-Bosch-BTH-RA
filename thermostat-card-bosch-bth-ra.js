@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.5.5";
+const CARD_VERSION = "1.5.9";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -190,8 +190,10 @@ const STYLE = `
   .main .targets { grid-column: 3; }
   .current {
     display: flex; align-items: center; gap: ${U(3)}; min-width: 0; white-space: nowrap;
-    color: var(--htc-accent); transition: color .3s;
+    color: var(--htc-muted); transition: color .3s;
   }
+  /* Température actuelle en rouge uniquement quand la flamme est affichée */
+  .current.heating .num, .current.heating .unit { color: var(--htc-hot, #ff4d4d); }
   .current .thermo { color: var(--htc-muted); --mdc-icon-size: ${U(13.4)}; flex: 0 0 auto; }
   .current .num { font-size: ${U(17.5)}; font-weight: 400; line-height: 1; letter-spacing: -0.02em; }
   .current .unit { align-self: flex-start; margin-top: ${U(1.2)}; font-size: ${U(7.7)}; font-weight: 400; line-height: 1; }
@@ -353,6 +355,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
       sw: r.querySelector(".switch"),
       power: r.querySelector(".power"),
       thermo: r.querySelector(".thermo"),
+      current: r.querySelector(".current"),
       powerTxt: r.querySelector(".power span"),
       main: r.querySelector(".main"),
       num: r.querySelector(".num"),
@@ -539,10 +542,13 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     }
     this._hass.callService("climate", "set_temperature", data);
     clearTimeout(this._clearTimer);
+    // Une vanne (Zigbee / Bosch) peut mettre longtemps à confirmer la nouvelle consigne :
+    // on garde la valeur saisie affichée jusqu'à ce que l'entité la confirme
+    // (voir _update), avec un délai de sécurité de 30 secondes.
     this._clearTimer = setTimeout(() => {
       this._pending = {};
       this._update();
-    }, 5000);
+    }, 30000);
   }
 
   // --- rendu -----------------------------------------------------------
@@ -584,7 +590,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
 
     // Synchronise les valeurs en attente avec l'état réel
     for (const k of Object.keys(this._pending)) {
-      if (a[k] === this._pending[k]) delete this._pending[k];
+      if (Math.abs(Number(a[k]) - this._pending[k]) < 0.01) delete this._pending[k];
     }
 
     // En-tête
@@ -621,6 +627,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     const p = this._heatingPower();
     E.power.hidden = p === null;
     E.thermo.hidden = p !== null;
+    E.current.classList.toggle("heating", p !== null);
     if (p !== null) this._setText(E.powerTxt, "power", `${p}`);
 
     // Température actuelle
