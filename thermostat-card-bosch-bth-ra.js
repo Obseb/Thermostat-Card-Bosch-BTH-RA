@@ -5,7 +5,7 @@
  * température actuelle à gauche, consigne avec chevrons à droite).
  */
 
-const CARD_VERSION = "1.5.3";
+const CARD_VERSION = "1.5.5";
 const CARD_TAG = "thermostat-card-bosch-bth-ra";
 const EDITOR_TAG = `${CARD_TAG}-editor`;
 
@@ -135,7 +135,7 @@ const STYLE = `
   .badge:focus-visible { outline: 2px solid var(--htc-accent); outline-offset: 3px; }
   .txt { min-width: 0; }
   .title {
-    font-size: ${U(7.5)}; font-weight: 500; line-height: 1.2;
+    font-size: ${U(6.7)}; font-weight: 500; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .status { font-size: ${U(4.6)}; font-weight: 500; color: var(--htc-muted); margin-top: 2px; }
@@ -153,16 +153,16 @@ const STYLE = `
   /* Puissance de chauffe : petite flamme avec le pourcentage dedans,
      centrée entre la température actuelle et la consigne */
   .power {
-    grid-column: 2; justify-self: center; align-self: center; position: relative;
+    flex: 0 0 auto; position: relative;
     display: flex; align-items: center; justify-content: center;
-    width: ${U(14.5)}; height: ${U(14.5)}; margin: 0 ${U(-1.75)}; /* marges négatives : l'encombrement reste 11u, rien ne bouge */
+    width: ${U(14.5)}; height: ${U(14.5)}; margin: ${U(-0.55)}; /* marges négatives : même encombrement que l'icône thermomètre (13.4u), rien ne bouge */
     color: var(--htc-accent); transition: color .3s;
   }
   .power svg { width: 100%; height: 100%; fill: currentColor; }
   .power span {
     position: absolute; left: 0; right: 0; top: 68%; transform: translateY(-50%);
-    text-align: center; font-size: ${U(3.6)}; font-weight: 700; line-height: 1; letter-spacing: -0.04em;
-    color: var(--htc-accent-bg);
+    text-align: center; font-size: ${U(4.2)}; font-weight: 700; line-height: 1; letter-spacing: -0.04em;
+    color: #fff;
   }
 
   /* Interrupteur Off / Chauffe : sa couleur suit le mode (--htc-accent) */
@@ -326,10 +326,10 @@ class ThermostatCardBoschBthRa extends HTMLElement {
           <div class="body"><div class="bodyinner">
           <div class="main">
             <div class="current">
+              <div class="power" hidden>${FLAME_SVG}<span></span></div>
               <ha-icon class="thermo" icon="mdi:thermometer"></ha-icon>
               <span class="num"></span><span class="unit"></span>
             </div>
-            <div class="power" hidden>${FLAME_SVG}<span></span></div>
             <div class="targets"></div>
           </div>
           <div class="modes-block">
@@ -352,6 +352,7 @@ class ThermostatCardBoschBthRa extends HTMLElement {
       status: r.querySelector(".status"),
       sw: r.querySelector(".switch"),
       power: r.querySelector(".power"),
+      thermo: r.querySelector(".thermo"),
       powerTxt: r.querySelector(".power span"),
       main: r.querySelector(".main"),
       num: r.querySelector(".num"),
@@ -619,7 +620,8 @@ class ThermostatCardBoschBthRa extends HTMLElement {
     // Puissance de chauffe (flamme + % si l'entité est renseignée et > 0)
     const p = this._heatingPower();
     E.power.hidden = p === null;
-    if (p !== null) this._setText(E.powerTxt, "power", `${p}%`);
+    E.thermo.hidden = p !== null;
+    if (p !== null) this._setText(E.powerTxt, "power", `${p}`);
 
     // Température actuelle
     this._setText(E.num, "cur", fmtTemp(a.current_temperature));

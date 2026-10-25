@@ -6,7 +6,7 @@ Mêmes fonctionnalités et même thème que la carte d'origine, mais une disposi
 
 - **en haut à gauche** : badge rond (icône de l'entité, qui suit le mode) + nom de la pièce ; le badge est cliquable (action au choix) ;
 - **en haut à droite** : interrupteur **Off ⇄ Chauffe**, dont la couleur change selon le mode (saumon en chauffe, gris quand c'est éteint, etc.), précédé d'une petite icône de batterie rouge clignotante si la batterie est faible ;
-- **à gauche** : température actuelle en grand, colorée selon le mode ; entre les deux, une petite flamme avec la puissance de chauffe si elle est renseignée ;
+- **à gauche** : température actuelle en grand, colorée selon le mode, précédée d'un thermomètre — remplacé par une flamme avec la puissance de chauffe quand elle est renseignée et supérieure à 0 ;
 - **à droite** : consigne avec chevrons ▲ / ▼ (envoi différé de 0,9 s pour éviter de spammer l'API).
 
 Fonctions conservées de la carte d'origine, désactivées par défaut pour garder l'aspect compact :
@@ -91,7 +91,7 @@ battery_low_entity: binary_sensor.vanne_cuisine_battery_low
 
 ### Puissance de chauffe
 
-Renseigne `heating_power_entity` avec une entité dont l'état est un pourcentage (0 à 100). Quand la valeur est supérieure à 0, une petite flamme s'affiche entre la température actuelle et la consigne, avec le pourcentage à l'intérieur. À 0, elle disparaît.
+Renseigne `heating_power_entity` avec une entité dont l'état est un pourcentage (0 à 100). Quand la valeur est supérieure à 0, une flamme avec la valeur (sans le signe %, en blanc) à l'intérieur remplace l'icône de thermomètre, à gauche de la température actuelle. À 0, le thermomètre revient.
 
 ```yaml
 type: custom:thermostat-card-bosch-bth-ra
@@ -101,7 +101,7 @@ heating_power_entity: sensor.cuisine_puissance_chauffe
 
 ### Taille et mise en page
 
-La carte respecte la taille réglée dans l'onglet **Mise en page** (vue « sections ») : la hauteur choisie est conservée quand on élargit la carte, et le contenu s'adapte à la largeur et à la hauteur disponibles. Si la carte est plus haute que nécessaire, l'en-tête (badge, nom, interrupteur, flamme) reste en haut et la température avec la consigne se centrent dans l'espace restant. Par défaut : 6 colonnes × 4 lignes (5 lignes avec `show_modes`).
+La carte respecte la taille réglée dans l'onglet **Mise en page** (vue « sections ») : la hauteur choisie est conservée quand on élargit la carte, et le contenu s'adapte à la largeur et à la hauteur disponibles. Si la carte est plus haute que nécessaire, l'en-tête (badge, nom, interrupteur) reste en haut et la température avec la consigne se centrent dans l'espace restant. Par défaut : 6 colonnes × 4 lignes (5 lignes avec `show_modes`).
 
 ### Choisir les modes affichés
 
@@ -149,4 +149,4 @@ git remote add origin https://github.com/<ton-user>/Thermostat-Card-Bosch-BTH-RA
 git push -u origin main
 ```
 
-Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.5.3`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
+Ajoute une **description** et des **topics** (`home-assistant`, `hacs`, `lovelace`) au dépôt, puis crée une **release** (ex. `v1.5.5`) : HACS s'en sert pour les versions. Le workflow `.github/workflows/validate.yml` vérifie la structure du dépôt.
